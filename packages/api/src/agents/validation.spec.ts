@@ -120,9 +120,100 @@ describe('agent instructions-prompt link validation', () => {
       agentCreateSchema.safeParse({
         ...base,
         instructionsPrompt: {
+          source: 'other',
+          groupId: validGroupId,
+          selection: { type: 'production' },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts a Langfuse production selection', () => {
+    const instructionsPrompt = {
+      source: 'langfuse' as const,
+      groupId: validGroupId,
+      selection: { type: 'production' as const },
+    };
+    expect(agentCreateSchema.parse({ ...base, instructionsPrompt }).instructionsPrompt).toEqual(
+      instructionsPrompt,
+    );
+    expect(agentUpdateSchema.parse({ instructionsPrompt }).instructionsPrompt).toEqual(
+      instructionsPrompt,
+    );
+  });
+
+  it('accepts a Langfuse version selection', () => {
+    const instructionsPrompt = {
+      source: 'langfuse' as const,
+      groupId: validGroupId,
+      selection: { type: 'version' as const, version: 3 },
+    };
+    expect(agentCreateSchema.parse({ ...base, instructionsPrompt }).instructionsPrompt).toEqual(
+      instructionsPrompt,
+    );
+  });
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '3'])(
+    'rejects an invalid Langfuse version: %j',
+    (version) => {
+      expect(
+        agentCreateSchema.safeParse({
+          ...base,
+          instructionsPrompt: {
+            source: 'langfuse',
+            groupId: validGroupId,
+            selection: { type: 'version', version },
+          },
+        }).success,
+      ).toBe(false);
+    },
+  );
+
+  it('rejects a Langfuse link with an exact selection', () => {
+    expect(
+      agentCreateSchema.safeParse({
+        ...base,
+        instructionsPrompt: {
+          source: 'langfuse',
+          groupId: validGroupId,
+          selection: { type: 'exact', promptId: validPromptId },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects extra keys on a Langfuse link and on its selection', () => {
+    expect(
+      agentCreateSchema.safeParse({
+        ...base,
+        instructionsPrompt: {
           source: 'langfuse',
           groupId: validGroupId,
           selection: { type: 'production' },
+          extra: true,
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      agentCreateSchema.safeParse({
+        ...base,
+        instructionsPrompt: {
+          source: 'langfuse',
+          groupId: validGroupId,
+          selection: { type: 'version', version: 3, extra: true },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a native link with a version selection', () => {
+    expect(
+      agentCreateSchema.safeParse({
+        ...base,
+        instructionsPrompt: {
+          source: 'native',
+          groupId: validGroupId,
+          selection: { type: 'version', version: 3 },
         },
       }).success,
     ).toBe(false);
